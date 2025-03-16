@@ -1,0 +1,105 @@
+version: '3.8'
+
+services:
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      target: development
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "8080:8080"
+    environment:
+      - NODE_ENV=development
+    networks:
+      - frontend-network
+      - backend-network
+
+  # Service Produits
+  product-service:
+    build:
+      context: ./services/product-service
+      target: development
+    volumes:
+      - ./services/product-service:/usr/src/app
+      - /usr/src/app/node_modules
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - MONGODB_URI=mongodb://product-db:27017/products
+    depends_on:
+      - product-db
+    networks:
+      - backend-network
+
+  product-db:
+    image: mongo:latest
+    volumes:
+      - product-data:/data/db
+    networks:
+      - backend-network
+
+  # Service Utilisateurs
+  user-service:
+    build:
+      context: ./services/user-service
+      target: development
+    volumes:
+      - ./services/user-service:/usr/src/app
+      - /usr/src/app/node_modules
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - MONGODB_URI=mongodb://user-db:27017/users
+      - JWT_SECRET=development_secret
+    depends_on:
+      - user-db
+    networks:
+      - backend-network
+
+  user-db:
+    image: mongo:latest
+    volumes:
+      - user-data:/data/db
+    networks:
+      - backend-network
+
+  # Service Panier
+  cart-service:
+    build:
+      context: ./services/cart-service
+      target: development
+    volumes:
+      - ./services/cart-service:/usr/src/app
+      - /usr/src/app/node_modules
+    ports:
+      - "3002:3002"
+    environment:
+      - NODE_ENV=development
+      - MONGODB_URI=mongodb://cart-db:27017/cart
+    depends_on:
+      - cart-db
+    networks:
+      - backend-network
+
+  cart-db:
+    image: mongo:latest
+    volumes:
+      - cart-data:/data/db
+    networks:
+      - backend-network
+
+networks:
+  frontend-network:
+    driver: bridge
+  backend-network:
+    driver: bridge
+
+volumes:
+  product-data:
+  user-data:
+  cart-data:

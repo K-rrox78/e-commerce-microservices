@@ -1,0 +1,145 @@
+version: '3.8'
+
+services:
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      target: production
+    image: registry.local:5000/ecommerce/frontend:latest
+    ports:
+      - "80:80"
+    environment:
+      - NODE_ENV=production
+    networks:
+      - frontend-network
+      - backend-network
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+
+  # Service Produits
+  product-service:
+    build:
+      context: ./services/product-service
+      target: production
+    image: registry.local:5000/ecommerce/product-service:latest
+    environment:
+      - NODE_ENV=production
+      - MONGODB_URI=mongodb://product-db:27017/products
+    depends_on:
+      - product-db
+    networks:
+      - backend-network
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+
+  product-db:
+    image: mongo:latest
+    volumes:
+      - product-data:/data/db
+    networks:
+      - backend-network
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+
+  # Service Utilisateurs
+  user-service:
+    build:
+      context: ./services/user-service
+      target: production
+    image: registry.local:5000/ecommerce/user-service:latest
+    environment:
+      - NODE_ENV=production
+      - MONGODB_URI=mongodb://user-db:27017/users
+    secrets:
+      - jwt_secret
+    depends_on:
+      - user-db
+    networks:
+      - backend-network
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+
+  user-db:
+    image: mongo:latest
+    volumes:
+      - user-data:/data/db
+    networks:
+      - backend-network
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+
+  # Service Panier
+  cart-service:
+    build:
+      context: ./services/cart-service
+      target: production
+    image: registry.local:5000/ecommerce/cart-service:latest
+    environment:
+      - NODE_ENV=production
+      - MONGODB_URI=mongodb://cart-db:27017/cart
+    depends_on:
+      - cart-db
+    networks:
+      - backend-network
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+
+  cart-db:
+    image: mongo:latest
+    volumes:
+      - cart-data:/data/db
+    networks:
+      - backend-network
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+
+networks:
+  frontend-network:
+    driver: overlay
+  backend-network:
+    driver: overlay
+
+volumes:
+  product-data:
+    driver: local
+  user-data:
+    driver: local
+  cart-data:
+    driver: local
+
+secrets:
+  jwt_secret:
+    external: true
